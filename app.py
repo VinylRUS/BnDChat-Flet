@@ -498,6 +498,12 @@ def main(page: ft.Page):
                                             ft.Row(
                                                 spacing=0,
                                                 controls=[
+                                                    ft.IconButton(
+                                                        icon=ft.Icons.LOGIN_ROUNDED,
+                                                        icon_color=TEXT_MUTED,
+                                                        on_click=open_login,
+                                                        tooltip="Войти",
+                                                    ),
                                                     ft.IconButton(icon=ft.Icons.POWER_SETTINGS_NEW, icon_color=TEXT_MUTED, on_click=handle_disconnect, tooltip="Отключиться"),
                                                 ],
                                             ),
@@ -516,17 +522,6 @@ def main(page: ft.Page):
                             ),
                         ),
                     ],
-                ),
-                ft.Container(
-                    right=16,
-                    bottom=16,
-                    content=ft.FloatingActionButton(
-                        icon=ft.Icons.LOGIN_ROUNDED,
-                        bgcolor=ACCENT,
-                        foreground_color="white",
-                        tooltip="Войти",
-                        on_click=open_login,
-                    ),
                 ),
             ],
         )
