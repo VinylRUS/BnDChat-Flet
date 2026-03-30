@@ -306,7 +306,7 @@ def main(page: ft.Page):
                     padding=8,
                     bgcolor=ACCENT if mine else SURFACE_2,
                     border_radius=10,
-                    border=ft.border.all(1, ACCENT if mine else BORDER),
+                    border=ft.Border.all(1, ACCENT if mine else BORDER),
                     width=460,
                 )
             ],
@@ -330,18 +330,12 @@ def main(page: ft.Page):
         status_text.value = text
 
     def close_login_sheet():
-        if getattr(page, "close", None):
-            page.close(login_sheet)
-        else:
-            login_sheet.open = False
-            page.update()
+        login_sheet.open = False
+        page.update()
 
     def open_login_sheet():
-        if getattr(page, "open", None):
-            page.open(login_sheet)
-        else:
-            login_sheet.open = True
-            page.update()
+        login_sheet.open = True
+        page.update()
 
     def show_main_window():
         app_content.visible = True
@@ -387,7 +381,7 @@ def main(page: ft.Page):
         return ft.Container(
             border_radius=10,
             bgcolor=SURFACE_2 if is_selected else None,
-            border=ft.border.all(1, ACCENT if is_selected else BORDER),
+            border=ft.Border.all(1, ACCENT if is_selected else BORDER),
             padding=10,
             ink=True,
             on_click=lambda _: select_room(room.room_id),
@@ -461,7 +455,12 @@ def main(page: ft.Page):
                         alignment=ft.MainAxisAlignment.END,
                         controls=[
                             ft.TextButton("Отмена", on_click=lambda _: close_login_sheet()),
-                            ft.ElevatedButton("Войти", bgcolor=ACCENT, color="white", on_click=handle_connect),
+                            ft.Button(
+                                "Войти",
+                                bgcolor=ACCENT,
+                                color="white",
+                                on_click=handle_connect,
+                            ),
                         ],
                     ),
                 ],
@@ -483,7 +482,7 @@ def main(page: ft.Page):
                     ft.Container(
                         width=310,
                         bgcolor=SURFACE,
-                        border=ft.border.all(1, BORDER),
+                        border=ft.Border.all(1, BORDER),
                         border_radius=12,
                         padding=10,
                         content=ft.Column(
@@ -506,7 +505,7 @@ def main(page: ft.Page):
                     ft.Container(
                         expand=True,
                         bgcolor=CHAT_BG,
-                        border=ft.border.all(1, BORDER),
+                        border=ft.Border.all(1, BORDER),
                         border_radius=12,
                         padding=10,
                         content=ft.Column(
@@ -546,6 +545,7 @@ def main(page: ft.Page):
             ),
         ],
     )
+    page.overlay.append(login_sheet)
     page.add(app_content)
 
     rooms_dd.on_change = room_changed
@@ -555,4 +555,4 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)
