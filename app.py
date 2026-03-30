@@ -329,10 +329,23 @@ def main(page: ft.Page):
     def set_status(text: str):
         status_text.value = text
 
+    def close_login_dialog():
+        if getattr(page, "close", None):
+            page.close(login_dlg)
+        else:
+            login_dlg.open = False
+
+    def open_login_dialog():
+        if getattr(page, "open", None):
+            page.open(login_dlg)
+        else:
+            login_dlg.open = True
+            page.update()
+
     def handle_connect(_=None):
         svc.connect(homeserver.value or "", user.value or "", password.value or "")
         set_status("Подключение...")
-        login_dlg.open = False
+        close_login_dialog()
         page.update()
 
     def handle_disconnect(_):
@@ -440,16 +453,14 @@ def main(page: ft.Page):
             ),
         ),
         actions=[
-            ft.TextButton("Отмена", on_click=lambda _: (setattr(login_dlg, "open", False), page.update())),
+            ft.TextButton("Отмена", on_click=lambda _: (close_login_dialog(), page.update())),
             ft.ElevatedButton("Войти", bgcolor=ACCENT, color="white", on_click=handle_connect),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
     )
-    page.dialog = login_dlg
 
     def open_login(_):
-        login_dlg.open = True
-        page.update()
+        open_login_dialog()
 
     page.add(
         ft.Stack(
