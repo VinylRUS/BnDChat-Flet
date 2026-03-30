@@ -263,6 +263,10 @@ def main(page: ft.Page):
     page.spacing = 0
     page.window_min_width = 1024
     page.window_min_height = 700
+    if hasattr(page, "window") and page.window:
+        page.window.maximized = True
+    elif hasattr(page, "window_maximized"):
+        page.window_maximized = True
 
     svc = MatrixService()
     events_q: "queue.Queue[tuple[str, object]]" = queue.Queue()
@@ -449,9 +453,9 @@ def main(page: ft.Page):
         draggable=True,
         show_drag_handle=True,
         dismissible=True,
-        bgcolor=SURFACE,
+        bgcolor=ft.Colors.TRANSPARENT,
         content=ft.Container(
-            padding=ft.padding.only(bottom=180),
+            margin=ft.margin.only(left=16, right=16, bottom=24),
             content=ft.Row(
                 alignment=ft.MainAxisAlignment.CENTER,
                 controls=[
