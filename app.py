@@ -443,7 +443,7 @@ def main(page: ft.Page):
 
     login_sheet = ft.BottomSheet(
         open=False,
-        enable_drag=True,
+        draggable=True,
         show_drag_handle=True,
         bgcolor=SURFACE,
         content=ft.Container(
