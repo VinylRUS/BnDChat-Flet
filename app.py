@@ -342,11 +342,15 @@ def main(page: ft.Page):
             login_dlg.open = True
             page.update()
 
+    def show_main_window():
+        app_content.visible = True
+        page.update()
+
     def handle_connect(_=None):
         svc.connect(homeserver.value or "", user.value or "", password.value or "")
         set_status("Подключение...")
         close_login_dialog()
-        page.update()
+        show_main_window()
 
     def handle_disconnect(_):
         svc.stop()
@@ -462,84 +466,85 @@ def main(page: ft.Page):
     def open_login(_):
         open_login_dialog()
 
-    page.add(
-        ft.Stack(
-            expand=True,
-            controls=[
-                ft.Row(
-                    expand=True,
-                    spacing=10,
-                    controls=[
-                        ft.Container(
-                            width=310,
-                            bgcolor=SURFACE,
-                            border=ft.border.all(1, BORDER),
-                            border_radius=12,
-                            padding=10,
-                            content=ft.Column(
-                                expand=True,
-                                spacing=8,
-                                controls=[
-                                    ft.Row(
-                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                        controls=[
-                                            ft.Text("BnDChat", size=24, weight=ft.FontWeight.BOLD),
-                                            status_text,
-                                        ],
-                                    ),
-                                    rooms_dd,
-                                    ft.Divider(height=1, color=BORDER),
-                                    chat_list,
-                                ]
-                            ),
-                        ),
-                        ft.Container(
+    app_content = ft.Stack(
+        expand=True,
+        visible=False,
+        controls=[
+            ft.Row(
+                expand=True,
+                spacing=10,
+                controls=[
+                    ft.Container(
+                        width=310,
+                        bgcolor=SURFACE,
+                        border=ft.border.all(1, BORDER),
+                        border_radius=12,
+                        padding=10,
+                        content=ft.Column(
                             expand=True,
-                            bgcolor=CHAT_BG,
-                            border=ft.border.all(1, BORDER),
-                            border_radius=12,
-                            padding=10,
-                            content=ft.Column(
-                                expand=True,
-                                controls=[
-                                    ft.Row(
-                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                        controls=[
-                                            selected_room_title,
-                                            ft.Row(
-                                                spacing=0,
-                                                controls=[
-                                                    ft.IconButton(
-                                                        icon=ft.Icons.LOGIN_ROUNDED,
-                                                        icon_color=TEXT_MUTED,
-                                                        on_click=open_login,
-                                                        tooltip="Войти",
-                                                    ),
-                                                    ft.IconButton(icon=ft.Icons.POWER_SETTINGS_NEW, icon_color=TEXT_MUTED, on_click=handle_disconnect, tooltip="Отключиться"),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                    ft.Divider(height=1, color=BORDER),
-                                    messages_col,
-                                    ft.Row(
-                                        vertical_alignment=ft.CrossAxisAlignment.END,
-                                        controls=[
-                                            message_input,
-                                            ft.IconButton(icon=ft.Icons.SEND_ROUNDED, icon_color=ACCENT, on_click=handle_send),
-                                        ]
-                                    ),
-                                ],
-                            ),
+                            spacing=8,
+                            controls=[
+                                ft.Row(
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                    controls=[
+                                        ft.Text("BnDChat", size=24, weight=ft.FontWeight.BOLD),
+                                        status_text,
+                                    ],
+                                ),
+                                rooms_dd,
+                                ft.Divider(height=1, color=BORDER),
+                                chat_list,
+                            ]
                         ),
-                    ],
-                ),
-            ],
-        )
+                    ),
+                    ft.Container(
+                        expand=True,
+                        bgcolor=CHAT_BG,
+                        border=ft.border.all(1, BORDER),
+                        border_radius=12,
+                        padding=10,
+                        content=ft.Column(
+                            expand=True,
+                            controls=[
+                                ft.Row(
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                    controls=[
+                                        selected_room_title,
+                                        ft.Row(
+                                            spacing=0,
+                                            controls=[
+                                                ft.IconButton(
+                                                    icon=ft.Icons.LOGIN_ROUNDED,
+                                                    icon_color=TEXT_MUTED,
+                                                    on_click=open_login,
+                                                    tooltip="Войти",
+                                                ),
+                                                ft.IconButton(icon=ft.Icons.POWER_SETTINGS_NEW, icon_color=TEXT_MUTED, on_click=handle_disconnect, tooltip="Отключиться"),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                ft.Divider(height=1, color=BORDER),
+                                messages_col,
+                                ft.Row(
+                                    vertical_alignment=ft.CrossAxisAlignment.END,
+                                    controls=[
+                                        message_input,
+                                        ft.IconButton(icon=ft.Icons.SEND_ROUNDED, icon_color=ACCENT, on_click=handle_send),
+                                    ]
+                                ),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+        ],
     )
+    page.add(app_content)
 
     rooms_dd.on_change = room_changed
     page.on_keyboard_event = lambda e: handle_send(e) if (e.key == "Enter" and e.shift is False) else None
+    open_login_dialog()
     poll_events()
 
 
