@@ -16,6 +16,7 @@ SURFACE = "#111111"
 SURFACE_2 = "#151515"
 BORDER = "#252525"
 TEXT_MUTED = "#B9B9B9"
+CHAT_BG = "#0C0C0C"
 
 
 @dataclass
@@ -257,7 +258,8 @@ def main(page: ft.Page):
     page.title = APP_NAME
     page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = BG
-    page.padding = 20
+    page.padding = 10
+    page.spacing = 0
     page.window_min_width = 1024
     page.window_min_height = 700
 
@@ -268,22 +270,27 @@ def main(page: ft.Page):
     user = ft.TextField(label="Логин", value=os.getenv("MATRIX_USER", "@sandbox-user:local"), border_color=BORDER)
     password = ft.TextField(label="Пароль", value=os.getenv("MATRIX_PASSWORD", "sandbox"), password=True, can_reveal_password=True, border_color=BORDER)
 
-    status = ft.Container(
-        content=ft.Text("Отключено", color=TEXT_MUTED),
-        padding=10,
-        border=ft.border.all(1, BORDER),
-        border_radius=10,
-        bgcolor=SURFACE_2,
-    )
+    status_text = ft.Text("Отключено", color=TEXT_MUTED, size=12)
 
-    rooms_dd = ft.Dropdown(label="Комната", options=[], border_color=BORDER)
-    message_input = ft.TextField(label="Сообщение", multiline=True, min_lines=1, max_lines=3, border_color=BORDER)
-    messages_col = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True, spacing=10)
+    rooms_dd = ft.Dropdown(label="Комната", options=[], border_color=BORDER, visible=False)
+    message_input = ft.TextField(
+        hint_text="Напиши сообщение...",
+        multiline=True,
+        min_lines=1,
+        max_lines=4,
+        border_color=BORDER,
+        bgcolor=SURFACE_2,
+        expand=True,
+    )
+    messages_col = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True, spacing=8)
+    chat_list = ft.ListView(expand=True, spacing=4, padding=0)
+    selected_room_title = ft.Text("Выбери чат", weight=ft.FontWeight.W_600, size=16)
 
     all_messages: Dict[str, List[dict]] = {}
 
     def bubble(msg: dict) -> ft.Control:
         mine = msg.get("mine", False)
+        sender = "Вы" if mine else msg["sender"]
         return ft.Row(
             alignment=ft.MainAxisAlignment.END if mine else ft.MainAxisAlignment.START,
             controls=[
@@ -291,16 +298,16 @@ def main(page: ft.Page):
                     content=ft.Column(
                         spacing=4,
                         controls=[
-                            ft.Text(msg["sender"], color=TEXT_MUTED, size=11),
+                            ft.Text(sender, color=TEXT_MUTED, size=11),
                             ft.Text(msg["body"], selectable=True),
                             ft.Text(msg.get("ts", ""), size=10, color=TEXT_MUTED),
                         ],
                     ),
-                    padding=10,
+                    padding=8,
                     bgcolor=ACCENT if mine else SURFACE_2,
-                    border_radius=12,
+                    border_radius=10,
                     border=ft.border.all(1, ACCENT if mine else BORDER),
-                    width=560,
+                    width=460,
                 )
             ],
         )
@@ -313,14 +320,19 @@ def main(page: ft.Page):
             return
         for msg in all_messages.get(rid, []):
             messages_col.controls.append(bubble(msg))
+        selected_room_title.value = next(
+            (opt.text for opt in rooms_dd.options if opt.key == rid),
+            "Чат",
+        )
         page.update()
 
     def set_status(text: str):
-        status.content = ft.Text(text, color=TEXT_MUTED)
+        status_text.value = text
 
-    def handle_connect(_):
+    def handle_connect(_=None):
         svc.connect(homeserver.value or "", user.value or "", password.value or "")
         set_status("Подключение...")
+        login_dlg.open = False
         page.update()
 
     def handle_disconnect(_):
@@ -342,7 +354,38 @@ def main(page: ft.Page):
         page.update()
 
     def room_changed(_):
+        rebuild_chat_list()
         rerender_messages()
+
+    def select_room(room_id: str):
+        rooms_dd.value = room_id
+        room_changed(None)
+        page.update()
+
+    def room_tile(room: MatrixRoom) -> ft.Control:
+        room_messages = all_messages.get(room.room_id, [])
+        last_message = room_messages[-1]["body"] if room_messages else "Нет сообщений"
+        is_selected = rooms_dd.value == room.room_id
+        return ft.Container(
+            border_radius=10,
+            bgcolor=SURFACE_2 if is_selected else None,
+            border=ft.border.all(1, ACCENT if is_selected else BORDER),
+            padding=10,
+            ink=True,
+            on_click=lambda _: select_room(room.room_id),
+            content=ft.Column(
+                spacing=2,
+                controls=[
+                    ft.Text(room.display_name, weight=ft.FontWeight.W_600, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                    ft.Text(last_message, size=11, color=TEXT_MUTED, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                ],
+            ),
+        )
+
+    def rebuild_chat_list():
+        chat_list.controls.clear()
+        for room in svc.rooms.values():
+            chat_list.controls.append(room_tile(room))
 
     def poll_events():
         changed = False
@@ -358,10 +401,12 @@ def main(page: ft.Page):
                 rooms_dd.options = [ft.dropdown.Option(key=r.room_id, text=r.display_name) for r in rooms]
                 if not rooms_dd.value and rooms:
                     rooms_dd.value = rooms[0].room_id
+                rebuild_chat_list()
             elif event == "msg":
                 msg: dict = payload  # type: ignore
                 rid = msg["room_id"]
                 all_messages.setdefault(rid, []).append(msg)
+                rebuild_chat_list()
             elif event == "state":
                 set_status(str(payload))
 
@@ -378,79 +423,92 @@ def main(page: ft.Page):
     svc.on_message = lambda message: events_q.put(("msg", message))
     svc.on_state = lambda text: events_q.put(("state", text))
 
+    login_dlg = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("Вход в Matrix"),
+        content=ft.Container(
+            width=460,
+            content=ft.Column(
+                tight=True,
+                spacing=10,
+                controls=[
+                    homeserver,
+                    user,
+                    password,
+                    ft.Text("Подсказка: sandbox/demo включают локальную песочницу.", size=12, color=TEXT_MUTED),
+                ],
+            ),
+        ),
+        actions=[
+            ft.TextButton("Отмена", on_click=lambda _: (setattr(login_dlg, "open", False), page.update())),
+            ft.ElevatedButton("Войти", bgcolor=ACCENT, color="white", on_click=handle_connect),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+    page.dialog = login_dlg
+
+    def open_login(_):
+        login_dlg.open = True
+        page.update()
+
     page.add(
-        ft.Column(
+        ft.Stack(
             expand=True,
             controls=[
                 ft.Row(
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    controls=[
-                        ft.Column(
-                            spacing=2,
-                            controls=[
-                                ft.Text("BnDChat", size=28, weight=ft.FontWeight.BOLD),
-                                ft.Text("Matrix desktop client on Flet", color=TEXT_MUTED),
-                            ],
-                        ),
-                        status,
-                    ],
-                ),
-                ft.Container(
-                    bgcolor=SURFACE,
-                    border=ft.border.all(1, BORDER),
-                    border_radius=16,
-                    padding=16,
-                    content=ft.Column(
-                        controls=[
-                            ft.Text("Подключение", weight=ft.FontWeight.W_600),
-                            ft.ResponsiveRow(
-                                controls=[
-                                    ft.Container(homeserver, col={"sm": 12, "md": 4}),
-                                    ft.Container(user, col={"sm": 12, "md": 4}),
-                                    ft.Container(password, col={"sm": 12, "md": 4}),
-                                ]
-                            ),
-                            ft.Row(
-                                controls=[
-                                    ft.ElevatedButton("Подключиться", on_click=handle_connect, bgcolor=ACCENT, color="white"),
-                                    ft.OutlinedButton("Отключиться", on_click=handle_disconnect),
-                                    ft.Text("Используй sandbox/demo для тестового режима", color=TEXT_MUTED, size=12),
-                                ]
-                            ),
-                        ]
-                    ),
-                ),
-                ft.Row(
                     expand=True,
+                    spacing=10,
                     controls=[
                         ft.Container(
-                            width=300,
+                            width=310,
                             bgcolor=SURFACE,
                             border=ft.border.all(1, BORDER),
-                            border_radius=16,
-                            padding=12,
+                            border_radius=12,
+                            padding=10,
                             content=ft.Column(
+                                expand=True,
+                                spacing=8,
                                 controls=[
-                                    ft.Text("Комнаты", weight=ft.FontWeight.W_600),
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            ft.Text("BnDChat", size=24, weight=ft.FontWeight.BOLD),
+                                            status_text,
+                                        ],
+                                    ),
                                     rooms_dd,
-                                    ft.Text("В sandbox: /admin для admin-ответа", size=11, color=TEXT_MUTED),
+                                    ft.Divider(height=1, color=BORDER),
+                                    chat_list,
                                 ]
                             ),
                         ),
                         ft.Container(
                             expand=True,
-                            bgcolor=SURFACE,
+                            bgcolor=CHAT_BG,
                             border=ft.border.all(1, BORDER),
-                            border_radius=16,
-                            padding=12,
+                            border_radius=12,
+                            padding=10,
                             content=ft.Column(
                                 expand=True,
                                 controls=[
-                                    ft.Text("Сообщения", weight=ft.FontWeight.W_600),
+                                    ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            selected_room_title,
+                                            ft.Row(
+                                                spacing=0,
+                                                controls=[
+                                                    ft.IconButton(icon=ft.Icons.POWER_SETTINGS_NEW, icon_color=TEXT_MUTED, on_click=handle_disconnect, tooltip="Отключиться"),
+                                                ],
+                                            ),
+                                        ],
+                                    ),
+                                    ft.Divider(height=1, color=BORDER),
                                     messages_col,
                                     ft.Row(
+                                        vertical_alignment=ft.CrossAxisAlignment.END,
                                         controls=[
-                                            ft.Container(message_input, expand=True),
+                                            message_input,
                                             ft.IconButton(icon=ft.Icons.SEND_ROUNDED, icon_color=ACCENT, on_click=handle_send),
                                         ]
                                     ),
@@ -458,6 +516,17 @@ def main(page: ft.Page):
                             ),
                         ),
                     ],
+                ),
+                ft.Container(
+                    right=16,
+                    bottom=16,
+                    content=ft.FloatingActionButton(
+                        icon=ft.Icons.LOGIN_ROUNDED,
+                        bgcolor=ACCENT,
+                        foreground_color="white",
+                        tooltip="Войти",
+                        on_click=open_login,
+                    ),
                 ),
             ],
         )
