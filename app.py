@@ -11,6 +11,7 @@ import flet as ft
 
 APP_NAME = "BnDChat Flet"
 ACCENT = "#FF8025"
+ACCENT_DARK = "#C85A12"
 BG = "#000000"
 SURFACE = "#111111"
 SURFACE_2 = "#151515"
@@ -304,9 +305,9 @@ def main(page: ft.Page):
                         ],
                     ),
                     padding=8,
-                    bgcolor=ACCENT if mine else SURFACE_2,
+                    bgcolor=ACCENT_DARK if mine else SURFACE_2,
                     border_radius=10,
-                    border=ft.Border.all(1, ACCENT if mine else BORDER),
+                    border=ft.Border.all(1, ACCENT_DARK if mine else BORDER),
                     width=460,
                 )
             ],
@@ -350,6 +351,14 @@ def main(page: ft.Page):
     def handle_disconnect(_):
         svc.stop()
         set_status("Отключено")
+        rooms_dd.options = []
+        rooms_dd.value = None
+        chat_list.controls.clear()
+        messages_col.controls.clear()
+        all_messages.clear()
+        selected_room_title.value = "Выбери чат"
+        app_content.visible = False
+        open_login_sheet()
         page.update()
 
     def handle_send(_):
@@ -439,30 +448,42 @@ def main(page: ft.Page):
         open=False,
         draggable=True,
         show_drag_handle=True,
+        dismissible=True,
         bgcolor=SURFACE,
         content=ft.Container(
-            padding=20,
-            height=370,
-            content=ft.Column(
-                spacing=12,
+            padding=ft.padding.only(bottom=180),
+            content=ft.Row(
+                alignment=ft.MainAxisAlignment.CENTER,
                 controls=[
-                    ft.Text("Вход в Matrix", size=20, weight=ft.FontWeight.W_600),
-                    homeserver,
-                    user,
-                    password,
-                    ft.Text("Подсказка: sandbox/demo включают локальную песочницу.", size=12, color=TEXT_MUTED),
-                    ft.Row(
-                        alignment=ft.MainAxisAlignment.END,
-                        controls=[
-                            ft.TextButton("Отмена", on_click=lambda _: close_login_sheet()),
-                            ft.Button(
-                                "Войти",
-                                bgcolor=ACCENT,
-                                color="white",
-                                on_click=handle_connect,
-                            ),
-                        ],
-                    ),
+                    ft.Container(
+                        width=560,
+                        padding=20,
+                        border_radius=16,
+                        bgcolor=SURFACE,
+                        border=ft.Border.all(1, BORDER),
+                        content=ft.Column(
+                            spacing=12,
+                            controls=[
+                                ft.Text("Вход в Matrix", size=20, weight=ft.FontWeight.W_600),
+                                homeserver,
+                                user,
+                                password,
+                                ft.Text("Подсказка: sandbox/demo включают локальную песочницу.", size=12, color=TEXT_MUTED),
+                                ft.Row(
+                                    alignment=ft.MainAxisAlignment.END,
+                                    controls=[
+                                        ft.TextButton("Отмена", on_click=lambda _: close_login_sheet()),
+                                        ft.Button(
+                                            "Войти",
+                                            bgcolor=ACCENT,
+                                            color="white",
+                                            on_click=handle_connect,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    )
                 ],
             ),
         ),
