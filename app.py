@@ -334,7 +334,9 @@ def main(page: ft.Page):
     def set_status(text: str):
         status_text.value = text
 
-    def close_login_sheet():
+    def close_login_sheet(force: bool = False):
+        if not force and not app_content.visible:
+            return
         login_sheet.open = False
         page.update()
 
@@ -349,7 +351,7 @@ def main(page: ft.Page):
     def handle_connect(_=None):
         svc.connect(homeserver.value or "", user.value or "", password.value or "")
         set_status("Подключение...")
-        close_login_sheet()
+        close_login_sheet(force=True)
         show_main_window()
 
     def handle_disconnect(_):
@@ -452,7 +454,7 @@ def main(page: ft.Page):
         open=False,
         draggable=True,
         show_drag_handle=True,
-        dismissible=True,
+        dismissible=False,
         bgcolor=ft.Colors.TRANSPARENT,
         content=ft.Container(
             margin=ft.margin.only(left=16, right=16, bottom=24),
