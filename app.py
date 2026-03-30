@@ -329,17 +329,18 @@ def main(page: ft.Page):
     def set_status(text: str):
         status_text.value = text
 
-    def close_login_dialog():
+    def close_login_sheet():
         if getattr(page, "close", None):
-            page.close(login_dlg)
+            page.close(login_sheet)
         else:
-            login_dlg.open = False
+            login_sheet.open = False
+            page.update()
 
-    def open_login_dialog():
+    def open_login_sheet():
         if getattr(page, "open", None):
-            page.open(login_dlg)
+            page.open(login_sheet)
         else:
-            login_dlg.open = True
+            login_sheet.open = True
             page.update()
 
     def show_main_window():
@@ -349,7 +350,7 @@ def main(page: ft.Page):
     def handle_connect(_=None):
         svc.connect(homeserver.value or "", user.value or "", password.value or "")
         set_status("Подключение...")
-        close_login_dialog()
+        close_login_sheet()
         show_main_window()
 
     def handle_disconnect(_):
@@ -440,31 +441,36 @@ def main(page: ft.Page):
     svc.on_message = lambda message: events_q.put(("msg", message))
     svc.on_state = lambda text: events_q.put(("state", text))
 
-    login_dlg = ft.AlertDialog(
-        modal=True,
-        title=ft.Text("Вход в Matrix"),
+    login_sheet = ft.BottomSheet(
+        open=False,
+        enable_drag=True,
+        show_drag_handle=True,
+        bgcolor=SURFACE,
         content=ft.Container(
-            width=460,
+            padding=20,
+            height=370,
             content=ft.Column(
-                tight=True,
-                spacing=10,
+                spacing=12,
                 controls=[
+                    ft.Text("Вход в Matrix", size=20, weight=ft.FontWeight.W_600),
                     homeserver,
                     user,
                     password,
                     ft.Text("Подсказка: sandbox/demo включают локальную песочницу.", size=12, color=TEXT_MUTED),
+                    ft.Row(
+                        alignment=ft.MainAxisAlignment.END,
+                        controls=[
+                            ft.TextButton("Отмена", on_click=lambda _: close_login_sheet()),
+                            ft.ElevatedButton("Войти", bgcolor=ACCENT, color="white", on_click=handle_connect),
+                        ],
+                    ),
                 ],
             ),
         ),
-        actions=[
-            ft.TextButton("Отмена", on_click=lambda _: (close_login_dialog(), page.update())),
-            ft.ElevatedButton("Войти", bgcolor=ACCENT, color="white", on_click=handle_connect),
-        ],
-        actions_alignment=ft.MainAxisAlignment.END,
     )
 
     def open_login(_):
-        open_login_dialog()
+        open_login_sheet()
 
     app_content = ft.Stack(
         expand=True,
@@ -544,7 +550,7 @@ def main(page: ft.Page):
 
     rooms_dd.on_change = room_changed
     page.on_keyboard_event = lambda e: handle_send(e) if (e.key == "Enter" and e.shift is False) else None
-    open_login_dialog()
+    open_login_sheet()
     poll_events()
 
 
